@@ -1,0 +1,85 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: service_user
+      POSTGRES_PASSWORD: pgpassword
+      POSTGRES_DB: graphql_demo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_user -d myapp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:5.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: mongopassword
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  customers:
+    build:
+      context: .
+      dockerfile: services/customers/Dockerfile
+    ports:
+      - "4001:4001"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://service_user:pgpassword@postgres:5432/graphql_demo
+
+  licenses:
+    build:
+      context: .
+      dockerfile: services/licenses/Dockerfile
+    ports:
+      - "4002:4002"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://service_user:pgpassword@postgres:5432/graphql_demo
+
+  access:
+    build:
+      context: .
+      dockerfile: services/access/Dockerfile
+    ports:
+      - "4003:4003"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URL=mongodb://mongo_user:mongopassword@mongodb:27017/access_db?authSource=admin
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "4000:4000"
+    depends_on:
+      - customers
+      - licenses
+      - access
+    environment:
+      - NODE_ENV=development
+    #restart: on-failure
+
+volumes:
+  postgres_data:
+  mongo_data:
