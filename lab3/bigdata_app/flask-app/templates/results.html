@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты анализа</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .summary {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .table th {
+            background-color: #ecf0f1;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .download-link {
+            color: #27ae60;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Результаты анализа</h1>
+
+    <div class="summary">
+        <p><strong>Файл:</strong> {{ filename }}</p>
+        <p><strong>Размер данных:</strong> {{ row_count }} строк, {{ column_count }} колонок</p>
+    </div>
+
+    <h2>Схема данных</h2>
+    <ul>
+        {% for col, typ in schema %}
+            <li><strong>{{ col }}</strong> — <code>{{ typ }}</code></li>
+        {% endfor %}
+    </ul>
+
+    <h2>Пример данных</h2>
+    {{ sample|safe }}
+
+    {% if plot_file %}
+        <h2>Визуализация</h2>
+        <img src="{{ url_for('download_result', filepath=plot_file) }}" alt="График распределения">
+    {% else %}
+        <p>Нет числовых колонок для построения графика.</p>
+    {% endif %}
+
+    {% if summary_file %}
+        <h2>Статистика</h2>
+        <p>Полная сводная статистика:
+            <a href="{{ url_for('download_result', filepath=summary_file) }}" class="download-link" download>
+                скачать summary.csv
+            </a>
+        </p>
+    {% endif %}
+
+    {% if model_metrics and model_metrics.rmse %}
+        <h2>Модель машинного обучения</h2>
+        <p><strong>Задача:</strong> Регрессия (предсказание цены дома)</p>
+        <p><strong>Метрики:</strong></p>
+        <ul>
+            <li>RMSE (ошибка): {{ model_metrics.rmse }}</li>
+            <li>R² (коэффициент детерминации): {{ model_metrics.r2 }}</li>
+        </ul>
+
+        {% if prediction_plot %}
+            <h3>График предсказаний</h3>
+            <img src="{{ url_for('download_result', filepath=_result_id + '/' + prediction_plot) }}"
+                 alt="Предсказания vs Реальные значения" style="max-width: 100%;">
+        {% endif %}
+    {% elif model_metrics and model_metrics.error %}
+        <p style="color: #e74c3c;">{{ model_metrics.error }}</p>
+    {% endif %}
+
+    <a href="/" class="back-link">← Загрузить другой файл</a>
+</body>
+</html>
